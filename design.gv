@@ -1,0 +1,12 @@
+digraph G {
+
+    code [shape="box"]
+    developer [shape="box3d"]
+    compose [shape="ellipse"]
+    
+    nodes [shape="record" label="{dog|cat}"]
+
+    {code; developer} -> compose -> nodes
+
+
+}
