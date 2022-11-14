@@ -1,0 +1,60 @@
+digraph G {
+	node [label="\N"];
+	subgraph cluster1 {
+		subgraph cluster2 {
+			inside_cluster_2;
+		}
+		inside_cluster_1 -> inside_cluster_2;
+	}
+	ideas	[shape=box3d];
+	developer	[shape=box3d];
+	ideas -> developer;
+	graphviz_diagram	[shape=box];
+	developer -> graphviz_diagram;
+	graphviz_diagram -> get_nodes;
+	update_diagram_nodes	[shape=ellipse];
+	graphviz_diagram -> update_diagram_nodes;
+	nodes	[label=<
+<TABLE>
+<TR><TD><B>Node[]</B></TD></TR>
+<TR><TD>Id</TD></TR>
+<TR><TD>URL?</TD></TR>
+<TR><TD>Pathspec?</TD></TR>
+<TR><TD>Expected?</TD></TR>
+</TABLE>
+    >,
+		shape=plain];
+	get_nodes -> nodes;
+	validate	[shape=ellipse];
+	nodes -> validate;
+	try_filling	[shape=ellipse];
+	nodes -> try_filling;
+	nodes -> update_diagram_nodes;
+	project_info	[label=<
+<TABLE>
+<TR><TD><B>Project Info</B></TD></TR>
+<TR><TD>Alias</TD></TR>
+<TR><TD>Repo URL</TD></TR>
+<TR><TD>Default Branch</TD></TR>
+</TABLE>
+    >,
+		shape=plain];
+	project_info -> validate;
+	project_info -> try_filling;
+	supported_pathspecs	[label="{jetbrains|sublime|gitlab|github}",
+		shape=record];
+	LocalConfig	[label=<
+<TABLE>
+<TR><TD><B>Local Config</B></TD></TR>
+<TR><TD>{Alias: Local Repo Path} Mapping</TD></TR>
+<TR><TD>Pathspec Type (=editor-dependent)</TD></TR>
+</TABLE>
+>,
+		shape=plain];
+	supported_pathspecs -> LocalConfig;
+	validation_status	[shape=box];
+	validate -> validation_status;
+	try_filling -> graphviz_diagram;
+	try_filling -> nodes;
+	update_diagram_nodes -> graphviz_diagram;
+}
