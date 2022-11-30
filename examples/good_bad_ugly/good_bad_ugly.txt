@@ -1,0 +1,7 @@
+Good (found in place)
+
+("Bad" is something missing)
+
+Ugly is found, but not where you expected it to be.
+
+And not everything is represented :)

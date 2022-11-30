@@ -2,20 +2,20 @@ digraph G {
 
     good [
     shape = "box"
-    URL = "https://github.com/guy4261/polkadot/blob/main/examples/good_bad_ugly/good_bad_ugly.py#L4"
-    expected = "print('Good')"
+    URL = "https://github.com/guy4261/polkadot/blob/main/examples/good_bad_ugly/good_bad_ugly.txt#L1"
+    expected = "Good (found in place)"
     ]
 
     bad [
     shape = "ellipse"
-    URL = "https://github.com/guy4261/polkadot/blob/main/examples/good_bad_ugly/good_bad_ugly.py#L1"
-    expected = "https://www.youtube.com/watch?v=FRZzUh9hcTo"
+    URL = "https://github.com/guy4261/polkadot/blob/main/examples/good_bad_ugly/good_bad_ugly.txt#L3"
+    expected = "Bad is something you can't find in its expected place."
     ]
 
     ugly [
     shape = "box"
-    URL = "https://github.com/guy4261/polkadot/blob/main/examples/good_bad_ugly/good_bad_ugly.py#L5"
-    expected = "print('Ugly')"
+    URL = "https://github.com/guy4261/polkadot/blob/main/examples/good_bad_ugly/good_bad_ugly.txt#L6"
+    expected = "Ugly is found, but not where you expected it to be."
     ]
 
     good -> bad -> ugly
