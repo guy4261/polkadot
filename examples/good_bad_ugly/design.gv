@@ -1,7 +1,22 @@
 digraph G {
 
-	good
-	bad
-	ugly
+    good [
+    shape = "box"
+    URL = "https://github.com/guy4261/polkadot/blob/main/examples/good_bad_ugly/good_bad_ugly.py#L4"
+    expected = "print('Good')"
+    ]
 
+    bad [
+    shape = "ellipse"
+    URL = "https://github.com/guy4261/polkadot/blob/main/examples/good_bad_ugly/good_bad_ugly.py#L1"
+    expected = "https://www.youtube.com/watch?v=FRZzUh9hcTo"
+    ]
+
+    ugly [
+    shape = "box"
+    URL = "https://github.com/guy4261/polkadot/blob/main/examples/good_bad_ugly/good_bad_ugly.py#L5"
+    expected = "print('Ugly')"
+    ]
+
+    good -> bad -> ugly
 }
