@@ -31,6 +31,7 @@ def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.add_argument("target", type=str, help=f"dot/gv file to validate, example: {EXAMPLE_DOTFILE}")
     parser.add_argument("--local", action="store_true")
+    parser.add_argument("--verbose", action="store_true")
     return parser
 
 
@@ -75,9 +76,8 @@ def get_github_raw_content(raw_url: RawURL) -> Tuple[Optional[RawContent], Optio
         return None, str(e)
 
 
-def validate(dotfile_path: str, remote: bool = True, repos_config: Optional[Dict[str, str]] = None):
+def validate(dotfile_path: str, local: bool = False, verbose: bool = False, repos_config: Optional[Dict[str, str]] = None) -> bool:
 
-    print(dotfile_path)
     content = open(dotfile_path).read()
     findings = C_CONTENT_PATTERN.findall(content)
 
@@ -88,42 +88,68 @@ def validate(dotfile_path: str, remote: bool = True, repos_config: Optional[Dict
         if url is not None and expected is not None:
             node_ids_to_tuple_url_expected[node_id] = (url, expected.strip("\r\n\t "))
 
+    warnings = 0
+    errors = 0
+    print()
     for node_id, (url, expected) in node_ids_to_tuple_url_expected.items():
-        if remote:
-            raw_url, err = get_actual_github_url(url)
-            raw_content, err = get_github_raw_content(raw_url)
-            lines = [line.strip("\r\n\t ") for line in raw_content.decode("utf-8").splitlines()]
-        else:
+        if local:
             local_path = url
             for k, v in repos_config.items():
                 local_path = local_path.replace(k, v)
             local_path = os.path.expanduser(os.path.expandvars(local_path))
             local_path, lineno1 = local_path.rsplit("#L", 1)
             lines = [line.strip("\r\n\t ") for line in open(local_path).readlines()]
+        else:
+            raw_url, err = get_actual_github_url(url)
+            raw_content, err = get_github_raw_content(raw_url)
+            lines = [line.strip("\r\n\t ") for line in raw_content.decode("utf-8").splitlines()]
+
 
         lineno1, err = get_lineno(url)
         lineno1 = int(lineno1)
         lineno0 = lineno1 - 1
 
         actual = lines[lineno0].strip()
+
         if expected == actual:
-            print(f"✅ {node_id}")
+            icon = "✅"
+            suffix = f" found {repr(actual)}." if verbose else ""
         else:
             if expected in lines:
-                print(f"🚧 {node_id} ? {lines.index(expected) + 1}")
+                warnings += 1
+                icon = "🚧"
+                suffix = f" expected {repr(expected)} was instead found on line {lines.index(expected) + 1}." if verbose else ""
             else:
-                print(f"❌ {node_id}")
+                errors += 1
+                icon = "❌"
+                suffix = f" expected {repr(expected)} but found {repr(actual)}." if verbose else ""
+
+        print(f"{icon} {node_id}{suffix}")
+
+    print()
+    if warnings == 0 and errors == 0:
+        print(f"{dotfile_path} is OK!")
+        return True
+    else:
+        print(f"{dotfile_path} is stale: found {warnings} warnings and {errors} errors.")
+        return False
 
 
 def main():
     parser = get_parser()
     args = parser.parse_args()
 
-    validate(
+    is_valid = validate(
         args.target,
-        remote=not args.local,
+        local=args.local,
+        verbose=args.verbose,
         repos_config={"https://github.com/guy4261/polkadot/blob/main": os.path.dirname(os.path.dirname(__file__))},
     )
+
+    if is_valid:
+        exit(0)
+    else:
+        exit(1)
 
 
 if __name__ == "__main__":
