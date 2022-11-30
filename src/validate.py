@@ -110,7 +110,7 @@ def validate(dotfile_path: str, remote: bool = True, repos_config: Optional[Dict
             print(f"✅ {node_id}")
         else:
             if expected in lines:
-                print(f"🚧 {node_id} ({lines.index(expected)})")
+                print(f"🚧 {node_id} ? {lines.index(expected) + 1}")
             else:
                 print(f"❌ {node_id}")
 
