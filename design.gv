@@ -1,12 +1,66 @@
 digraph G {
 
-    code [shape="box"]
-    developer [shape="box3d"]
-    compose [shape="ellipse"]
+    tokens [shape="box"]
+    tokens -> get_content
+
+    subgraph cluster_validate {
+        label="validate()"
+        labeljust="left"
     
-    nodes [shape="record" label="{dog|cat}"]
+        polkadot_diagram [shape="box"]
 
-    {code; developer} -> compose -> nodes
+        polkadot_nodes [shape="box"]
 
+        get_nodes [shape="ellipse"
+
+url="https://github.com/guy4261/polkadot/blob/main/.gitignore#L10"
+expected=".Python"
+]
+
+        polkadot_diagram -> get_nodes -> polkadot_nodes -> polka_node
+        
+        subgraph cluster_validate_foreach_node {
+    
+        label="foreach node"
+        labeljust="l"
+        
+        polka_node [shape=none label=<
+<TABLE>
+<TR><TD><B>Node</B></TD></TR>
+<TR><TD>id</TD></TR>
+<TR><TD>url</TD></TR>
+<TR><TD>expected</TD></TR>
+</TABLE>
+>]
+    
+    url [shape="box"]
+    expected [shape="box"]
+    polka_node -> {url; expected}
+    
+    actual [shape="box"]
+    get_content [shape="ellipse"]
+    url -> get_content -> actual
+    
+    compare [shape="ellipse"]
+    result [shape=none label=<
+<TABLE>
+<TR><TD><B>Result</B></TD></TR>
+<TR><TD>OK</TD></TR>
+<TR><TD>Different: str</TD></TR>
+<TR><TD>Elsewhere: line_numbers</TD></TR>
+</TABLE>
+>]
+    {expected; actual} -> compare -> result
+
+        }
+
+    all [shape="ellipse"]
+    final_result [shape="box"]
+    result -> all -> final_result
+        
+
+    }
+
+    
 
 }
