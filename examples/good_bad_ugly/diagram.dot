@@ -1,0 +1,22 @@
+digraph G {
+
+    node1 [
+    shape = "box"
+    URL = "https://github.com/guy4261/polkadot/blob/main/examples/good_bad_ugly/good_bad_ugly.txt#L1"
+    expected = "Good (found in place)"
+    ]
+
+    node2 [
+    shape = "ellipse"
+    URL = "https://github.com/guy4261/polkadot/blob/main/examples/good_bad_ugly/good_bad_ugly.txt#L3"
+    expected = "Bad is something you can't find in its expected place."
+    ]
+
+    node3 [
+    shape = "box"
+    URL = "https://github.com/guy4261/polkadot/blob/main/examples/good_bad_ugly/good_bad_ugly.txt#L6"
+    expected = "Ugly is found, but not where you expected it to be."
+    ]
+
+    node1 -> node2 -> node3
+}

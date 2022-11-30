@@ -24,7 +24,7 @@ RawContent = bytes
 ErrorMessage = str
 LineNo = int
 
-EXAMPLE_DOTFILE = os.path.realpath(os.path.join(os.path.dirname(__file__), "../examples/good_bad_ugly/design.gv"))
+EXAMPLE_DOTFILE = os.path.realpath(os.path.join(os.path.dirname(__file__), "../examples/good_bad_ugly/diagram.dot"))
 
 
 def get_parser() -> argparse.ArgumentParser:
