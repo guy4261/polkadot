@@ -1,12 +1,20 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import argparse
+import json
 import os
 import re
-from typing import Dict, Optional, Tuple
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Tuple
 from urllib.parse import urlparse
 
+import pydot
 import requests
+
+from load_dotfile import PolkadotNode
+from load_dotfile import collect
 
 CONTENT_PATTERN = r"(([\w]+)[\s\t]+(\[.*?\]))"
 C_CONTENT_PATTERN = re.compile(CONTENT_PATTERN, re.DOTALL)
@@ -22,24 +30,18 @@ RawContent = bytes
 ErrorMessage = str
 LineNo = int
 
-EXAMPLE_DOTFILE = os.path.realpath(
-    os.path.join(os.path.dirname(__file__), "../examples/good_bad_ugly/diagram.dot")
-)
+EXAMPLE_DOTFILE = os.path.realpath(os.path.join(os.path.dirname(__file__), "../examples/good_bad_ugly/diagram.dot"))
 
 
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "target", type=str, help=f"dot/gv file to validate, example: {EXAMPLE_DOTFILE}"
-    )
+    parser.add_argument("target", type=str, help=f"dot/gv file to validate, example: {EXAMPLE_DOTFILE}")
     parser.add_argument("-l", "--local", action="store_true")
     parser.add_argument("-v", "--verbose", action="store_true")
     return parser
 
 
 def get_url_and_expected(node_details: str) -> Tuple[Optional[URL], Optional[Expected]]:
-
-    print(">>>", node_details)
 
     expected = C_EXPECTED_PATTERN.findall(node_details)
     if len(expected) == 1:
@@ -86,13 +88,7 @@ def get_github_raw_content(
         return None, str(e)
 
 
-def validate(
-    dotfile_path: str,
-    local: bool = False,
-    verbose: bool = False,
-    repos_config: Optional[Dict[str, str]] = None,
-) -> bool:
-
+def load_nodes_using_regex(dotfile_path: str):
     content = open(dotfile_path).read()
     findings = C_CONTENT_PATTERN.findall(content)
 
@@ -108,11 +104,24 @@ def validate(
             expected = expected.strip("\r\n\t ")
         node_ids_to_tuple_url_expected[node_id] = (url, expected)
 
+    return node_ids_to_tuple_url_expected
+
+
+def validate(
+    nodes: List[PolkadotNode],
+    local: bool = False,
+    verbose: bool = False,
+    repos_config: Optional[Dict[str, str]] = None,
+) -> bool:
+
     warnings = 0
     errors = 0
     print()
-    print(f"Found {len(node_ids_to_tuple_url_expected)} nodes")
-    for node_id, (url, expected) in node_ids_to_tuple_url_expected.items():
+    print(f"Found {len(nodes)} nodes")
+    for node in nodes:
+        node_id = node.node_id
+        url = node.url
+        expected = node.expected
         if expected is None:
             if url is None:
                 icon = "👻"
@@ -127,16 +136,24 @@ def validate(
             local_path = url
             for k, v in repos_config.items():
                 local_path = local_path.replace(k, v)
-            local_path = os.path.expanduser(os.path.expandvars(local_path))
+            if local_path == url:
+                print("Failed resolving URL:", url)
+                continue
             local_path, lineno1 = local_path.rsplit("#L", 1)
-            lines = [line.strip("\r\n\t ") for line in open(local_path).readlines()]
+            local_path = os.path.expanduser(local_path)
+
+            if not os.path.isfile(local_path):
+                print(f"Path not found: {local_path}")
+                continue
+            lines = [line.strip("\\\r\n\t '\"") for line in open(local_path).readlines()]
         else:
             raw_url, err = get_actual_github_url(url)
             raw_content, err = get_github_raw_content(raw_url)
-            lines = [
-                line.strip("\r\n\t ")
-                for line in raw_content.decode("utf-8").splitlines()
-            ]
+            if err is not None:
+                print(err)
+                continue
+            else:
+                lines = [line.strip("\\\r\n\t '\"") for line in raw_content.decode("utf-8").splitlines()]
 
         lineno1, err = get_lineno(url)
         lineno1 = int(lineno1)
@@ -159,43 +176,52 @@ def validate(
             else:
                 errors += 1
                 icon = "❌"
-                suffix = (
-                    f" expected {repr(expected)} but found {repr(actual)}."
-                    if verbose
-                    else ""
-                )
+                suffix = f" expected {repr(expected)} but found {repr(actual)}." if verbose else ""
 
         print(f"{icon} {node_id}{suffix}")
 
     print()
     if warnings == 0 and errors == 0:
-        print(f"{dotfile_path} is OK!")
         return True
     else:
-        print(
-            f"{dotfile_path} is stale: found {warnings} warnings and {errors} errors."
-        )
+        print(f"Found {warnings} warnings and {errors} errors.")
         return False
 
 
 def main():
     parser = get_parser()
     args = parser.parse_args()
+    dotfile_path = args.target
+
+    gs = pydot.graph_from_dot_file(dotfile_path)
+    assert len(gs) == 1
+    g = gs[0]
+    ns = collect(g)
+
+    """
+    ns = [
+        PolkadotNode(node_id='classify_section_title',
+                     url='https://git.zr.org/ziprecruiter/ziprecruiter/-/blob/main/company/company_section/extract_company_data.py#L28',
+                     expected='"def get_company_sections(raw_description: str, org_synonyms: List[List[str]], only_english: bool = True,"')
+    ]
+    print("\n".join(map(str, ns)))
+    """
+
+    repos_config = json.load(open(os.path.expanduser("~/.polkadot.json")))
+    repos_config = {record["remote"]: record["local"] for record in repos_config["repos"]}
 
     is_valid = validate(
-        args.target,
+        ns,
         local=args.local,
         verbose=args.verbose,
-        repos_config={
-            "https://github.com/guy4261/polkadot/blob/main": os.path.dirname(
-                os.path.dirname(__file__)
-            )
-        },
+        repos_config=repos_config,
     )
 
     if is_valid:
+        print(f"{dotfile_path} is OK!")
         exit(0)
     else:
+        print(f"{dotfile_path} is stale")
         exit(1)
 
 
