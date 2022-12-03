@@ -1,20 +1,23 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import argparse
-import json
 import os
 import re
-from typing import Dict
+from enum import Enum
 from typing import List
 from typing import Optional
 from typing import Tuple
 from urllib.parse import urlparse
 
-import pydot
+import git
 import requests
 
+from config import PolkadotConfig
+from config import RepoConfig
+from config import load_polkadot_config
+from load_dotfile import CHARS_TO_STRIP
 from load_dotfile import PolkadotNode
-from load_dotfile import collect
+from load_dotfile import to_polkadot_nodes
 
 CONTENT_PATTERN = r"(([\w]+)[\s\t]+(\[.*?\]))"
 C_CONTENT_PATTERN = re.compile(CONTENT_PATTERN, re.DOTALL)
@@ -30,12 +33,13 @@ RawContent = bytes
 ErrorMessage = str
 LineNo = int
 
-EXAMPLE_DOTFILE = os.path.realpath(os.path.join(os.path.dirname(__file__), "../examples/good_bad_ugly/diagram.dot"))
+EXAMPLE = os.path.realpath(os.path.join(os.path.dirname(__file__), "../examples/good_bad_ugly/diagram.dot"))
+EXAMPLE = f", example: {EXAMPLE}" if os.path.isfile(EXAMPLE) else ""
 
 
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
-    parser.add_argument("target", type=str, help=f"dot/gv file to validate, example: {EXAMPLE_DOTFILE}")
+    parser.add_argument("target", type=str, help=f"dot/gv file to validate{EXAMPLE}")
     parser.add_argument("-l", "--local", action="store_true")
     parser.add_argument("-v", "--verbose", action="store_true")
     return parser
@@ -107,12 +111,142 @@ def load_nodes_using_regex(dotfile_path: str):
     return node_ids_to_tuple_url_expected
 
 
+class ResultType(Enum):
+
+    found = "✅"
+    missing = "❌"
+    elsewhere = "🚧"
+    url_only = "🔗"
+    expected_only = "👀"
+    empty = "👻"
+    failed = "🎃"
+
+
+SHA1 = str
+LocalPath = str
+LineNo1 = int
+LineNo0 = int
+
+
+def break_git_link(git_link: str) -> Tuple[SHA1, LocalPath, LineNo1]:
+    """
+    https://github.com/guy4261/polkadot/blob/4ac8dec74950fd7107c8c9d3308d890d4695471f/src/validate.py#L125
+    https://gitlab.com/guy4261/polkadot/blob/4ac8dec74950fd7107c8c9d3308d890d4695471f/src/validate.py#L125
+    """
+
+    parsed = urlparse(git_link)
+    user, project, blob, sha, path = parsed.path.split(os.path.sep, 4)  # blob/sha/path
+    path, lineno1 = path.rsplit("#")
+    lineno1 = int(lineno1.strip("L"))
+    return sha, path, lineno1
+
+
+def validate_node(node: PolkadotNode, config: PolkadotConfig) -> ResultType:
+
+    url = node.url
+    expected = node.expected
+
+    if url is None and expected is None:
+        return ResultType.empty
+
+    if url is not None and expected is None:
+        return ResultType.url_only
+
+    if url is None and expected is not None:
+        return ResultType.expected_only
+
+    hit = False
+    repo_config: RepoConfig
+    for repo_config in config.repos:
+        if url.startswith(repo_config.remote):
+            hit = True
+            break
+
+    if not hit:
+        return ResultType.failed
+
+    # now we know we've been hit
+    sha1, localpath, lineno1 = break_git_link(url)
+    local_path = os.path.join(repo_config.local, localpath)
+    lineno0 = lineno1 - 1
+
+    repo = git.Repo(local_path)
+    commit = repo.commit(sha1)
+    print(commit.committed_datetime.strftime("%Y/%m/%d %H:%M:%S"))
+
+    origin = repo.remote().name
+    content = repo.git.show(f"{origin}/{repo_config.default_branch}:{localpath}")
+    lines = [l.strip(CHARS_TO_STRIP) for l in content.splitlines()]
+
+    try:
+        actual = lines[lineno0].strip(CHARS_TO_STRIP)
+    except IndexError:
+        actual = None
+    if actual == expected:
+        return ResultType.found
+
+    try:
+        lines.index(expected)
+        return ResultType.elsewhere
+    except ValueError:
+        return ResultType.missing
+
+
+"""
+local: bool = False,
+verbose: bool = False,
+repos_config: Optional[Dict[str, str]] = None,
+"""
+
+
 def validate(
     nodes: List[PolkadotNode],
-    local: bool = False,
-    verbose: bool = False,
-    repos_config: Optional[Dict[str, str]] = None,
+    polkadot_config: PolkadotConfig,
 ) -> bool:
+
+    results = []
+    for node in nodes:
+        try:
+            result = validate_node(node, polkadot_config)
+            results.append(result)
+        except:
+            result = ResultType.failed
+            results.append(result)
+        print(f"{result.value}  {node.node_id}")
+
+    return False
+
+
+def main():
+    parser = get_parser()
+    args = parser.parse_args()
+    dotfile_path = args.target
+
+    ns = to_polkadot_nodes(dotfile_path)
+
+    repos_config = load_polkadot_config()
+
+    is_valid = validate(ns, repos_config)
+    # local=args.local,
+    # verbose=args.verbose,
+
+    if args.verbose:
+        print("\nLegend:\n▬▬▬▬▬▬▬")
+        for e in ResultType:
+            print(f"{e.value} {e.name.capitalize()}")
+
+    if is_valid:
+        print(f"{dotfile_path} is OK!")
+        exit(0)
+    else:
+        print(f"{dotfile_path} is stale")
+        exit(1)
+
+
+if __name__ == "__main__":
+    main()
+
+"""
 
     warnings = 0
     errors = 0
@@ -128,7 +262,7 @@ def validate(
                 suffix = " has no 'URL', 'expected' attributes." if verbose else ""
             else:
                 icon = "🔗"
-                suffix = f" has no 'expected' attribute: {url}" if verbose else ""
+                suffix = f" only has 'URL' attribute: {url}" if verbose else ""
             print(f"{icon} {node_id}{suffix}")
             continue
 
@@ -186,44 +320,4 @@ def validate(
     else:
         print(f"Found {warnings} warnings and {errors} errors.")
         return False
-
-
-def main():
-    parser = get_parser()
-    args = parser.parse_args()
-    dotfile_path = args.target
-
-    gs = pydot.graph_from_dot_file(dotfile_path)
-    assert len(gs) == 1
-    g = gs[0]
-    ns = collect(g)
-
-    """
-    ns = [
-        PolkadotNode(node_id='classify_section_title',
-                     url='https://git.zr.org/ziprecruiter/ziprecruiter/-/blob/main/company/company_section/extract_company_data.py#L28',
-                     expected='"def get_company_sections(raw_description: str, org_synonyms: List[List[str]], only_english: bool = True,"')
-    ]
-    print("\n".join(map(str, ns)))
-    """
-
-    repos_config = json.load(open(os.path.expanduser("~/.polkadot.json")))
-    repos_config = {record["remote"]: record["local"] for record in repos_config["repos"]}
-
-    is_valid = validate(
-        ns,
-        local=args.local,
-        verbose=args.verbose,
-        repos_config=repos_config,
-    )
-
-    if is_valid:
-        print(f"{dotfile_path} is OK!")
-        exit(0)
-    else:
-        print(f"{dotfile_path} is stale")
-        exit(1)
-
-
-if __name__ == "__main__":
-    main()
+"""
