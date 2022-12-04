@@ -4,20 +4,14 @@ import argparse
 import os
 import re
 from enum import Enum
-from typing import List
-from typing import Optional
-from typing import Tuple
+from typing import List, Optional, Tuple
 from urllib.parse import urlparse
 
 import git
 import requests
 
-from config import PolkadotConfig
-from config import RepoConfig
-from config import load_polkadot_config
-from load_dotfile import CHARS_TO_STRIP
-from load_dotfile import PolkadotNode
-from load_dotfile import to_polkadot_nodes
+from config import PolkadotConfig, RepoConfig, load_polkadot_config
+from load_dotfile import CHARS_TO_STRIP, PolkadotNode, to_polkadot_nodes
 
 CONTENT_PATTERN = r"(([\w]+)[\s\t]+(\[.*?\]))"
 C_CONTENT_PATTERN = re.compile(CONTENT_PATTERN, re.DOTALL)
@@ -33,14 +27,15 @@ RawContent = bytes
 ErrorMessage = str
 LineNo = int
 
-EXAMPLE = os.path.realpath(os.path.join(os.path.dirname(__file__), "../examples/good_bad_ugly/diagram.dot"))
+EXAMPLE = os.path.realpath(
+    os.path.join(os.path.dirname(__file__), "../examples/good_bad_ugly/diagram.dot")
+)
 EXAMPLE = f", example: {EXAMPLE}" if os.path.isfile(EXAMPLE) else ""
 
 
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.add_argument("target", type=str, help=f"dot/gv file to validate{EXAMPLE}")
-    parser.add_argument("-l", "--local", action="store_true")
     parser.add_argument("-v", "--verbose", action="store_true")
     return parser
 
@@ -214,7 +209,13 @@ def validate(
             results.append(result)
         print(f"{result.value}  {node.node_id}")
 
-    return False
+    return (
+        len(
+            set(results) & {ResultType.failed, ResultType.missing, ResultType.elsewhere}
+        )
+        == 0
+        and ResultType.found in results
+    )
 
 
 def main():
@@ -227,11 +228,20 @@ def main():
     repos_config = load_polkadot_config()
 
     is_valid = validate(ns, repos_config)
-    # local=args.local,
-    # verbose=args.verbose,
 
     if args.verbose:
-        print("\nLegend:\n▬▬▬▬▬▬▬")
+        """
+        # If I'd ever want it
+        try:
+            from blessed import Terminal
+            term = Terminal()
+            legend_title = term.underline("Legend")
+        except ModuleNotFoundError:
+        """
+
+        print()
+        legend_title = "Legend\n──────"
+        print(legend_title)
         for e in ResultType:
             print(f"{e.value} {e.name.capitalize()}")
 

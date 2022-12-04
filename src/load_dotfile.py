@@ -1,7 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict
-from typing import List
-from typing import Optional
+from typing import Dict, List, Optional
 
 import pydot
 
@@ -22,7 +20,9 @@ class PolkadotNode:
 DotFile = str
 
 
-def _collect(g: pydot.Graph, node_id_to_nodes: Dict[NodeId, PolkadotNode]) -> Dict[NodeId, PolkadotNode]:
+def _collect(
+    g: pydot.Graph, node_id_to_nodes: Dict[NodeId, PolkadotNode]
+) -> Dict[NodeId, PolkadotNode]:
 
     for node in g.get_nodes():
         node_id = node.get_name().strip(CHARS_TO_STRIP)
