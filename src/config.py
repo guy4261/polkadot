@@ -16,7 +16,6 @@ class RepoType(Enum):
 class RepoConfig:
     label: str
     remote: str
-    remote_raw: str
     local: str
     default_branch: str
     type: Literal["github", "gitlab"]
@@ -36,8 +35,7 @@ if not os.path.isfile(POLKADOT_CONFIG_DEFAULT_PATH):
                 repos=[
                     RepoConfig(
                         label="polkadot",
-                        remote="https://github.com/guy4261/polkadot",
-                        remote_raw="https://raw.githubusercontent.com/guy4261/polkadot",
+                        remote="github.com/guy4261/polkadot",
                         local="~/Documents/polkadot",
                         type="github",
                         default_branch="main",

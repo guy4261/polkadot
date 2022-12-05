@@ -3,30 +3,34 @@ from typing import Dict, List, Optional
 
 import pydot
 
-DOT_RESERVED_NODE_IDS = frozenset({"graph", "node", "edge", ""})
-CHARS_TO_STRIP = "\\\r\n\t '\""
+DOT_RESERVED_NODE_IDS = frozenset({r'"\n"', "graph", "node", "edge", ""})
+CHARS_TO_STRIP = "\\\r\n\t '\"<>"
 NodeId = str
 URL = str
 Expected = str
 
 
-@dataclass()
+@dataclass
 class PolkadotNode:
     node_id: NodeId
     url: Optional[URL] = None
     expected: Optional[Expected] = None
+    subgraph: Optional[str] = None
 
 
 DotFile = str
 
 
 def _collect(
-    g: pydot.Graph, node_id_to_nodes: Dict[NodeId, PolkadotNode]
+    g: pydot.Graph,
+    node_id_to_nodes: Dict[NodeId, PolkadotNode],
+    subgraph_name: str = "",
 ) -> Dict[NodeId, PolkadotNode]:
 
     for node in g.get_nodes():
-        node_id = node.get_name().strip(CHARS_TO_STRIP)
-        if node_id in DOT_RESERVED_NODE_IDS:
+        node_id_orig = node.get_name()
+        node_id = node_id_orig.strip(CHARS_TO_STRIP)
+        if node_id in DOT_RESERVED_NODE_IDS or node_id_orig in DOT_RESERVED_NODE_IDS:
             continue
         attrs = {k.lower(): v for k, v in node.get_attributes().items()}
         url = attrs.get("url", None)
@@ -35,21 +39,26 @@ def _collect(
 
         expected = attrs.get("expected", None)
         if expected is not None:
-            expected = expected.strip()
+            expected = expected.strip(CHARS_TO_STRIP).replace(r"\"", '"')
 
-        pdn = PolkadotNode(node_id, url, expected)
+        pdn = PolkadotNode(node_id, url, expected, subgraph_name)
         node_id_to_nodes[node_id] = pdn
 
     for edge in g.get_edges():
         src = edge.get_source()
-        dst = edge.get_destination()
+        # dst = edge.get_destination()
         if src not in node_id_to_nodes:
-            node_id_to_nodes[src] = PolkadotNode(src)
+            node_id_to_nodes[src] = PolkadotNode(src, subgraph=subgraph_name)
         if dst not in node_id_to_nodes:
-            node_id_to_nodes[dst] = PolkadotNode(dst)
+            node_id_to_nodes[dst] = PolkadotNode(dst, subgraph=subgraph_name)
 
     for subgraph in g.get_subgraphs():
-        _collect(subgraph, node_id_to_nodes)
+        sg_name = (
+            subgraph.get_name()
+            if len(subgraph_name) == 0
+            else ".".join(subgraph_name, sg_name)
+        )
+        _collect(subgraph, node_id_to_nodes, subgraph_name=sg_name)
 
     return node_id_to_nodes
 
