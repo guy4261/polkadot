@@ -46,7 +46,7 @@ def _collect(
 
     for edge in g.get_edges():
         src = edge.get_source()
-        # dst = edge.get_destination()
+        dst = edge.get_destination()
         if src not in node_id_to_nodes:
             node_id_to_nodes[src] = PolkadotNode(src, subgraph=subgraph_name)
         if dst not in node_id_to_nodes:

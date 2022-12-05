@@ -1,0 +1,7 @@
+black
+ipython
+isort
+jupyter
+pylint
+pytest
+tqdm

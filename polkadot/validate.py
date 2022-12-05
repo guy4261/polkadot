@@ -10,8 +10,8 @@ from urllib.parse import urlparse
 import git
 import requests
 
-from config import PolkadotConfig, RepoConfig, load_polkadot_config
-from load_dotfile import CHARS_TO_STRIP, PolkadotNode, to_polkadot_nodes
+from polkadot.config import PolkadotConfig, RepoConfig, load_polkadot_config
+from polkadot.load_dotfile import CHARS_TO_STRIP, PolkadotNode, to_polkadot_nodes
 
 CONTENT_PATTERN = r"(([\w]+)[\s\t]+(\[.*?\]))"
 C_CONTENT_PATTERN = re.compile(CONTENT_PATTERN, re.DOTALL)
