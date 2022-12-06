@@ -21,11 +21,14 @@ class PolkadotNode:
 DotFile = str
 
 
-def _collect(
+def collect(
     g: pydot.Graph,
-    node_id_to_nodes: Dict[NodeId, PolkadotNode],
+    node_id_to_nodes: Optional[Dict[NodeId, PolkadotNode]],
     subgraph_name: str = "",
 ) -> Dict[NodeId, PolkadotNode]:
+
+    if node_id_to_nodes is None:
+        node_id_to_nodes = dict()
 
     for node in g.get_nodes():
         node_id_orig = node.get_name()
@@ -58,7 +61,7 @@ def _collect(
             if len(subgraph_name) == 0
             else ".".join(subgraph_name, sg_name)
         )
-        _collect(subgraph, node_id_to_nodes, subgraph_name=sg_name)
+        collect(subgraph, node_id_to_nodes, subgraph_name=sg_name)
 
     return node_id_to_nodes
 
@@ -68,5 +71,5 @@ def to_polkadot_nodes(dotfile_path: DotFile) -> List[PolkadotNode]:
     assert len(gs) == 1
     g = gs[0]
     node_id_to_nodes = dict()
-    _collect(g, node_id_to_nodes)
+    collect(g, node_id_to_nodes)
     return list(node_id_to_nodes.values())
