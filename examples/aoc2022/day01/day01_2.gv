@@ -1,0 +1,35 @@
+digraph G {
+
+    current_elf_calories [shape="box"]
+    max_elf_calories [shape="box"]
+
+    calories [shape="box"]
+    break [shape="box"]
+
+    input [shape="box"]
+    line [shape="box"]    
+
+    zero [shape="box"]
+    assign [shape="ellipse"]
+    zero -> assign -> {current_elf_calories, max_elf_calories}
+    input -> line
+    subgraph cluster_foreach_line {
+        
+        label="foreach line"
+        line
+        break_or_calories [shape="diamond"]
+        update_max_elf [shape="ellipse"]
+        zero_current_elf_calories [shape="ellipse"]
+        update_current_elf_calories [shape="ellipse"]
+        
+        line -> break_or_calories [label=" break/end"]
+        break_or_calories -> break -> {update_max_elf, zero_current_elf_calories}
+        update_max_elf -> max_elf_calories
+        zero_current_elf_calories -> current_elf_calories
+        break_or_calories -> calories -> update_current_elf_calories -> current_elf_calories
+        
+        
+
+    }
+
+}
