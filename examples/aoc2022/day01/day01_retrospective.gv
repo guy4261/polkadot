@@ -1,0 +1,21 @@
+digraph G {
+
+    input [shape="box"]
+    process_input [shape="ellipse"]
+    elf [shape="record" label="{elf|calories}"]    
+    input -> process_input -> elf
+
+    topk [shape="box"]
+    init_store [shape="ellipse" label="store.init()"]
+    store [shape="box"]
+
+    store_before [shape="box"]
+    store_after [shape="box"]
+    store -> {store_before, store_after} [style="dotted"]
+
+    topk -> init_store -> store_before
+    
+    maybe_store [shape="ellipse"]
+    {store_before, elf} -> maybe_store -> store_after
+
+}
