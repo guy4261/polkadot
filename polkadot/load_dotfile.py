@@ -59,7 +59,7 @@ def collect(
         sg_name = (
             subgraph.get_name()
             if len(subgraph_name) == 0
-            else ".".join(subgraph_name, sg_name)
+            else ".".join([subgraph_name, subgraph.get_name()])
         )
         collect(subgraph, node_id_to_nodes, subgraph_name=sg_name)
 
@@ -73,3 +73,8 @@ def to_polkadot_nodes(dotfile_path: DotFile) -> List[PolkadotNode]:
     node_id_to_nodes = dict()
     collect(g, node_id_to_nodes)
     return list(node_id_to_nodes.values())
+
+
+if __name__ == "__main__":
+    import sys
+    _ = to_polkadot_nodes(sys.path[1])
